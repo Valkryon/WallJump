@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import org.bukkit.Bukkit;
@@ -35,7 +36,7 @@ public class UpdateChecker implements Listener {
         public void run() {
             URL url;
             try {
-                url = new URL("https://api.spigotmc.org/legacy/update.php?resource=88311");
+                url = URI.create("https://api.spigotmc.org/legacy/update.php?resource=88311").toURL();
             } catch (MalformedURLException invalidUrl) {
                 return;
             }
@@ -47,7 +48,8 @@ public class UpdateChecker implements Listener {
             }
             try {
                 BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                if (br.readLine().equals(currentVers)) {
+                String latestVersion = br.readLine();
+                if (latestVersion == null || latestVersion.equals(currentVers)) {
                     update = false;
                 } else {
                     update = true;

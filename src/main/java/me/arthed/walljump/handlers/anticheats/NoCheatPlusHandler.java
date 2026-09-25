@@ -1,32 +1,36 @@
 package me.arthed.walljump.handlers.anticheats;
 
-import fr.neatmonster.nocheatplus.NCPAPIProvider;
-import fr.neatmonster.nocheatplus.checks.CheckType;
-import fr.neatmonster.nocheatplus.components.NoCheatPlusAPI;
-import fr.neatmonster.nocheatplus.hooks.ExemptionContext;
-import fr.neatmonster.nocheatplus.players.IPlayerData;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 
+import java.lang.reflect.Method;
+
+/**
+ * Hooks into NoCheatPlus (or Updated-NoCheatPlus) using reflection, so no compile time dependency is needed.
+ */
 public class NoCheatPlusHandler implements AntiCheatHandler {
 
-    private final NoCheatPlusAPI api;
-    private final ExemptionContext exemptionContext;
+    private final Object movingCheckType;
+    private final Method exemptMethod;
+    private final Method unexemptMethod;
 
-    public NoCheatPlusHandler() {
-        api = NCPAPIProvider.getNoCheatPlusAPI();
-        exemptionContext = new ExemptionContext(88311);
-    }
-    @Override
-    public void stopPotentialWallJumpingChecks(Player player) {
-        IPlayerData playerData = api.getPlayerDataManager().getPlayerData(player);
-        if(playerData.isCheckActive(CheckType.MOVING, player))
-            playerData.exempt(CheckType.MOVING, exemptionContext);
+    public NoCheatPlusHandler(Plugin noCheatPlus) throws ReflectiveOperationException {
+        ClassLoader classLoader = noCheatPlus.getClass().getClassLoader();
+        Class<?> checkTypeClass = Class.forName("fr.neatmonster.nocheatplus.checks.CheckType", true, classLoader);
+        Class<?> exemptionManagerClass = Class.forName("fr.neatmonster.nocheatplus.hooks.NCPExemptionManager", true, classLoader);
+
+        movingCheckType = checkTypeClass.getField("MOVING").get(null);
+        exemptMethod = exemptionManagerClass.getMethod("exemptPermanently", Player.class, checkTypeClass);
+        unexemptMethod = exemptionManagerClass.getMethod("unexempt", Player.class, checkTypeClass);
     }
 
     @Override
-    public void restartPotentialWallJumpingChecks(Player player) {
-        IPlayerData playerData = api.getPlayerDataManager().getPlayerData(player);
-        if(playerData.isCheckActive(CheckType.MOVING, player))
-            playerData.unexempt(CheckType.MOVING, exemptionContext);
+    public void stopPotentialWallJumpingChecks(Player player) throws ReflectiveOperationException {
+        exemptMethod.invoke(null, player, movingCheckType);
+    }
+
+    @Override
+    public void restartPotentialWallJumpingChecks(Player player) throws ReflectiveOperationException {
+        unexemptMethod.invoke(null, player, movingCheckType);
     }
 }

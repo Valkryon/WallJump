@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,7 +34,7 @@ public class WallJumpConfiguration extends YamlConfiguration {
         reload();
 
         InputStream defaultConfigInputStream = WallJump.class.getResourceAsStream("/" + fileName);
-        InputStreamReader defaultConfigReader = new InputStreamReader(defaultConfigInputStream);
+        InputStreamReader defaultConfigReader = new InputStreamReader(defaultConfigInputStream, StandardCharsets.UTF_8);
         setDefaults(YamlConfiguration.loadConfiguration(defaultConfigReader));
     }
 
@@ -58,7 +59,7 @@ public class WallJumpConfiguration extends YamlConfiguration {
         if(data.containsKey(path))
             return (Material)data.get(path);
 
-        Material result = Material.valueOf(getString(path));
+        Material result = Material.matchMaterial(getString(path));
         data.put(path, result);
         return result;
     }
@@ -69,9 +70,9 @@ public class WallJumpConfiguration extends YamlConfiguration {
 
         List<Material> result = new ArrayList<>();
         for(String materialName : getStringList(path)) {
-            try {
-                result.add(Material.valueOf(materialName));
-            } catch(IllegalArgumentException ignore) {}
+            Material material = Material.matchMaterial(materialName);
+            if(material != null)
+                result.add(material);
         }
         data.put(path, result);
         return result;

@@ -7,7 +7,10 @@ import me.arthed.walljump.api.events.WallJumpStartEvent;
 import me.arthed.walljump.config.WallJumpConfiguration;
 import me.arthed.walljump.enums.WallFace;
 import me.arthed.walljump.handlers.WorldGuardHandler;
-import me.arthed.walljump.utils.*;
+import me.arthed.walljump.utils.AntiCheatUtils;
+import me.arthed.walljump.utils.EffectUtils;
+import me.arthed.walljump.utils.LocationUtils;
+import me.arthed.walljump.utils.VelocityUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -69,19 +72,18 @@ public class WPlayer {
         //stop the player from falling and moving while on the wall
         //or make them slide down
         velocityY = 0;
-        if(BukkitUtils.isVersionBefore(BukkitUtils.Version.V1_9))
-            velocityY = 0.04f;
-        velocityTask = Bukkit.getScheduler().runTaskTimerAsynchronously(WallJump.getInstance(), () -> {
+        if(velocityTask != null)
+            velocityTask.cancel();
+        velocityTask = Bukkit.getScheduler().runTaskTimer(WallJump.getInstance(), () -> {
             player.setVelocity(new Vector(0, velocityY, 0));
             if(velocityY != 0) {
                 EffectUtils.spawnSlidingParticles(player, 2, lastFacing);
                 if(sliding) {
                     if (player.isOnGround() || !LocationUtils.getBlockPlayerIsStuckOn(player, lastFacing).getType().isSolid()) {
-                        Bukkit.getScheduler().runTask(WallJump.getInstance(), () -> {
-                            player.setFallDistance(0);
-                            player.teleport(player.getLocation());
-                            onWallJumpEnd(false);
-                        });
+                        player.setFallDistance(0);
+                        player.teleport(player.getLocation());
+                        onWallJumpEnd(false);
+                        return;
                     }
                     if (lastJumpLocation.getY() - player.getLocation().getY() >= 1.2) {
                         lastJumpLocation = player.getLocation();
@@ -94,13 +96,13 @@ public class WPlayer {
         //make the player fall | slide when the time runs out
         if(fallTask != null)
             fallTask.cancel();
-        fallTask = Bukkit.getScheduler().runTaskLaterAsynchronously(WallJump.getInstance(), () -> {
+        fallTask = Bukkit.getScheduler().runTaskLater(WallJump.getInstance(), () -> {
             if(onWall) {
                 if (config.getBoolean("slide")) {
                     velocityY = (float) -config.getDouble("slidingSpeed");
                     sliding = true;
                 } else {
-                    Bukkit.getScheduler().runTask(WallJump.getInstance(), (Runnable) this::onWallJumpEnd);
+                    onWallJumpEnd();
                 }
             }
         }, (long)(config.getDouble("timeOnWall")*20));
@@ -125,7 +127,10 @@ public class WPlayer {
 
         //allow the player to move again
         player.setFallDistance(0);
-        velocityTask.cancel();
+        if(velocityTask != null) {
+            velocityTask.cancel();
+            velocityTask = null;
+        }
 
         //call event
         WallJumpEndEvent event = new WallJumpEndEvent(this, config.getDouble("horizontalJumpPower"), config.getDouble("verticalJumpPower"));
@@ -140,13 +145,15 @@ public class WPlayer {
                     event.getVerticalPower());
 
         //after 1.5 seconds, if the player hasn't wall jumped again, reset everything
-        Bukkit.getScheduler().runTaskLaterAsynchronously(WallJump.getInstance(), () -> {
-            if(LocationUtils.isOnGround(player)) {
+        Bukkit.getScheduler().runTaskLater(WallJump.getInstance(), () -> {
+            if(!onWall && LocationUtils.isOnGround(player)) {
                 reset();
             }
         }, 12);
 
-        stopWallJumpingTask = Bukkit.getScheduler().runTaskLaterAsynchronously(WallJump.getInstance(), this::reset, 24);
+        if(stopWallJumpingTask != null)
+            stopWallJumpingTask.cancel();
+        stopWallJumpingTask = Bukkit.getScheduler().runTaskLater(WallJump.getInstance(), this::reset, 24);
 
     }
 
@@ -161,10 +168,7 @@ public class WPlayer {
         if(stopWallJumpingTask != null)
             stopWallJumpingTask.cancel();
         stopWallJumpingTask = null;
-        Bukkit.getScheduler().runTask(WallJump.getInstance(), () -> {
-            WallJumpResetEvent event = new WallJumpResetEvent(this);
-            Bukkit.getPluginManager().callEvent(event);
-        });
+        Bukkit.getPluginManager().callEvent(new WallJumpResetEvent(this));
     }
 
     public boolean canWallJump() {

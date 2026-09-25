@@ -3,21 +3,20 @@ package me.arthed.walljump;
 import me.arthed.walljump.api.WallJumpAPI;
 import me.arthed.walljump.command.WallJumpCommand;
 import me.arthed.walljump.config.WallJumpConfiguration;
-import me.arthed.walljump.handlers.BStats;
 import me.arthed.walljump.handlers.OtherPluginsHandler;
 import me.arthed.walljump.handlers.WorldGuardHandler;
 import me.arthed.walljump.listeners.*;
 import me.arthed.walljump.player.PlayerManager;
 import me.arthed.walljump.player.WPlayer;
 import me.arthed.walljump.utils.AntiCheatUtils;
-import me.arthed.walljump.utils.BukkitUtils;
 import me.arthed.walljump.utils.UpdateChecker;
-import me.vagdedes.spartan.api.API;
+import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.logging.Level;
 
 
 public final class WallJump extends JavaPlugin {
@@ -71,7 +70,7 @@ public final class WallJump extends JavaPlugin {
             playerManager.registerPlayer(player);
         }
 
-        new BStats(this, 10126);
+        new Metrics(this, 10126);
 
         UpdateChecker updateChecker = new UpdateChecker(this);
         if(!config.getBoolean("ignoreUpdates"))
@@ -88,9 +87,12 @@ public final class WallJump extends JavaPlugin {
         config = new WallJumpConfiguration("config.yml");
         dataConfig = new WallJumpConfiguration("data.yml");
 
-        Plugin worldGuardPlugin = getServer().getPluginManager().getPlugin("WorldGuard");
-        if(worldGuardPlugin != null) {
-            worldGuard = new WorldGuardHandler(worldGuardPlugin, this);
+        if(getServer().getPluginManager().getPlugin("WorldGuard") != null) {
+            try {
+                worldGuard = new WorldGuardHandler();
+            } catch(LinkageError e) {
+                getLogger().log(Level.WARNING, "Failed to hook into WorldGuard, the wall-jump flag will not work", e);
+            }
         }
     }
 

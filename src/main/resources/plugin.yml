@@ -1,7 +1,7 @@
 name: WallJump
-version: 2.0.1
+version: '${version}'
 main: me.arthed.walljump.WallJump
-api-version: 1.13
+api-version: '26.2'
 softdepend: [WorldGuard, Spartan, AAC, NoCheatPlus, TreysDoubleJump]
 authors: [ Arthed ]
 description: Adds an easy to understand, yet still challenging wall jump mechanic

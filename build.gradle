@@ -1,48 +1,58 @@
 plugins {
     id 'java'
+    id 'com.gradleup.shadow' version '9.6.1'
 }
 
 group = 'me.arthed.walljump'
-version = '2.0.1'
+version = '2.1.0'
 
-sourceCompatibility = '1.8'
-targetCompatibility = '1.8'
+java {
+    // Minecraft 26.1+ requires Java 25
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
+}
 
 repositories {
     mavenCentral()
     maven {
-        name = 'spigotmc-repo'
-        url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/'
+        name = 'papermc'
+        url = 'https://repo.papermc.io/repository/maven-public/'
     }
     maven {
-        name = 'sonatype'
-        url = 'https://oss.sonatype.org/content/groups/public/'
-    }
-    maven {
-        name = 'worldguard'
+        name = 'enginehub'
         url = 'https://maven.enginehub.org/repo/'
-    }
-    maven {
-        name 'aac'
-        url 'https://repo.janmm14.de/repository/public'
-    }
-    maven {
-        name 'no-cheat-plus'
-        url 'https://repo.md-5.net/content/repositories/snapshots/'
-    }
-    maven {
-        name 'treys-double-jump'
-        url 'https://jitpack.io'
     }
 }
 
 dependencies {
-    compileOnly 'org.spigotmc:spigot-api:1.16.5-R0.1-SNAPSHOT'
+    compileOnly 'io.papermc.paper:paper-api:26.2.build.+'
+    compileOnly 'com.sk89q.worldguard:worldguard-bukkit:7.0.16'
 
-    compileOnly 'com.sk89q.worldguard:worldguard-bukkit:7.0.6-SNAPSHOT'
+    implementation 'org.bstats:bstats-bukkit:3.2.1'
+}
 
-    compileOnly 'de.janmm14:aac-api:5.0.0'
-    compileOnly 'fr.neatmonster:nocheatplus:3.16.1-SNAPSHOT'
-    implementation 'com.github.TreyRuffy.TreysDoubleJump:TreysDoubleJump:2.6.4'
-    compileOnly files('libs/SpartanAPI.jar')
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 25
+}
+
+processResources {
+    def props = [version: version]
+    inputs.properties props
+    filteringCharset = 'UTF-8'
+    filesMatching('plugin.yml') {
+        expand props
+    }
+}
+
+shadowJar {
+    archiveClassifier = ''
+    relocate 'org.bstats', 'me.arthed.walljump.libs.bstats'
+}
+
+tasks.named('jar') {
+    enabled = false
+}
+
+tasks.named('assemble') {
+    dependsOn shadowJar
 }

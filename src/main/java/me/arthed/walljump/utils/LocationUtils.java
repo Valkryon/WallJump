@@ -33,27 +33,7 @@ public class LocationUtils {
     }
 
     public static WallFace getPlayerFacing(Player player) {
-        if(BukkitUtils.isVersionAfter(BukkitUtils.Version.V1_13))
-            return WallFace.fromBlockFace(player.getFacing());
-        else {
-            double rotation = (player.getLocation().getYaw() - 90.0F) % 360.0F;
-
-            if (rotation < 0.0D) {
-                rotation += 360.0D;
-            }
-            if ((0.0D <= rotation) && (rotation < 45.0D))
-                return WallFace.WEST;
-            if ((45.0D <= rotation) && (rotation < 135.0D))
-                return WallFace.NORTH;
-            if ((135.0D <= rotation) && (rotation < 225.0D))
-                return WallFace.EAST;
-            if ((225.0D <= rotation) && (rotation < 315.0D))
-                return WallFace.SOUTH;
-            if ((315.0D <= rotation) && (rotation < 360.0D)) {
-                return WallFace.WEST;
-            }
-            return WallFace.NORTH;
-        }
+        return WallFace.fromBlockFace(player.getFacing());
     }
 
 

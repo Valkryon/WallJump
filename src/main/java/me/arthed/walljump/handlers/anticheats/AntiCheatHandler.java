@@ -4,7 +4,7 @@ import org.bukkit.entity.Player;
 
 public interface AntiCheatHandler {
 
-    void stopPotentialWallJumpingChecks(Player player);
-    void restartPotentialWallJumpingChecks(Player player);
+    void stopPotentialWallJumpingChecks(Player player) throws ReflectiveOperationException;
+    void restartPotentialWallJumpingChecks(Player player) throws ReflectiveOperationException;
 
 }
