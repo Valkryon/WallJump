@@ -39,12 +39,14 @@ public class WorldGuardHandler {
         if(ALLOW_WALL_JUMP == null)
             return true;
 
+        //testState is only true when the flag resolves to ALLOW, which includes the flag's default value
+        //(unlike queryState, which returns null instead of DENY when the default is false and no region sets the flag)
         RegionQuery query = WorldGuard.getInstance().getPlatform().getRegionContainer().createQuery();
-        return query.queryState(
+        return query.testState(
                 BukkitAdapter.adapt(player.getLocation()),
                 WorldGuardPlugin.inst().wrapPlayer(player),
                 ALLOW_WALL_JUMP
-        ) != StateFlag.State.DENY;
+        );
     }
 
 }

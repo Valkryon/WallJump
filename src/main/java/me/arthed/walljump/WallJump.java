@@ -9,8 +9,6 @@ import me.arthed.walljump.listeners.*;
 import me.arthed.walljump.player.PlayerManager;
 import me.arthed.walljump.player.WPlayer;
 import me.arthed.walljump.utils.AntiCheatUtils;
-import me.arthed.walljump.utils.UpdateChecker;
-import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
@@ -41,11 +39,6 @@ public final class WallJump extends JavaPlugin {
         return config;
     }
 
-    private WallJumpConfiguration dataConfig;
-    public WallJumpConfiguration getDataConfig() {
-        return dataConfig;
-    }
-
     private WorldGuardHandler worldGuard;
     public WorldGuardHandler getWorldGuardHandler() {
         return worldGuard;
@@ -70,12 +63,6 @@ public final class WallJump extends JavaPlugin {
             playerManager.registerPlayer(player);
         }
 
-        new Metrics(this, 10126);
-
-        UpdateChecker updateChecker = new UpdateChecker(this);
-        if(!config.getBoolean("ignoreUpdates"))
-            updateChecker.checkUpdates();
-
         new AntiCheatUtils();
 
         api = new WallJumpAPI();
@@ -85,7 +72,6 @@ public final class WallJump extends JavaPlugin {
     public void onLoad() {
         plugin = this;
         config = new WallJumpConfiguration("config.yml");
-        dataConfig = new WallJumpConfiguration("data.yml");
 
         if(getServer().getPluginManager().getPlugin("WorldGuard") != null) {
             try {
@@ -98,11 +84,9 @@ public final class WallJump extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if(config.getBoolean("toggleCommand")) {
-            for (WPlayer wplayer : playerManager.getWPlayers()) {
-                dataConfig.set(wplayer.getPlayer().getUniqueId().toString(), wplayer.enabled);
-            }
-            dataConfig.save();
+        //let go of players that are stuck on a wall and restore their anti cheat checks
+        for(WPlayer wplayer : playerManager.getWPlayers()) {
+            wplayer.stopWallJumping();
         }
     }
 

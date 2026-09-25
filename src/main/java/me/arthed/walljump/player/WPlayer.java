@@ -13,7 +13,9 @@ import me.arthed.walljump.utils.LocationUtils;
 import me.arthed.walljump.utils.VelocityUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
@@ -32,18 +34,20 @@ public class WPlayer {
     private BukkitTask velocityTask;
     private BukkitTask fallTask;
     private float velocityY;
-    private BukkitTask stopWallJumpingTask;
+    private BukkitTask landingTask;
 
     private final WallJumpConfiguration config;
     private final WorldGuardHandler worldGuard;
-
-    public boolean enabled = true;
+    private final NamespacedKey enabledKey;
 
     protected WPlayer(Player player) {
         this.player = player;
 
-        config = WallJump.getInstance().getWallJumpConfig();
-        worldGuard = WallJump.getInstance().getWorldGuardHandler();
+        WallJump wallJump = WallJump.getInstance();
+        config = wallJump.getWallJumpConfig();
+        worldGuard = wallJump.getWorldGuardHandler();
+        enabledKey = new NamespacedKey(wallJump, "enabled");
+        remainingJumps = getMaxJumps();
     }
 
     public void onWallJumpStart() {
@@ -106,10 +110,7 @@ public class WPlayer {
         }, (long)(config.getDouble("timeOnWall")*20));
 
         //cancel the task for resetting wall jumping if the player wall jumps
-        if(stopWallJumpingTask != null)
-            stopWallJumpingTask.cancel();
-
-
+        cancelLandingTask();
     }
 
     public void onWallJumpEnd() {
@@ -142,17 +143,38 @@ public class WPlayer {
                     event.getHorizontalPower(),
                     event.getVerticalPower());
 
-        //after 1.5 seconds, if the player hasn't wall jumped again, reset everything
-        Bukkit.getScheduler().runTaskLater(WallJump.getInstance(), () -> {
-            if(!onWall && LocationUtils.isOnGround(player)) {
+        //once the player lands (and hasn't wall jumped again), reset everything
+        cancelLandingTask();
+        landingTask = Bukkit.getScheduler().runTaskTimer(WallJump.getInstance(), () -> {
+            if(hasLanded())
                 reset();
-            }
-        }, 12);
+        }, 2, 2);
+    }
 
-        if(stopWallJumpingTask != null)
-            stopWallJumpingTask.cancel();
-        stopWallJumpingTask = Bukkit.getScheduler().runTaskLater(WallJump.getInstance(), this::reset, 24);
+    /**
+     * Immediately stops wall jumping without pushing the player or calling any events.
+     * Used when the player leaves, dies or changes world.
+     */
+    public void stopWallJumping() {
+        if(onWall)
+            AntiCheatUtils.restartPotentialAntiCheatChecks(player);
+        onWall = false;
+        sliding = false;
+        velocityY = 0;
+        if(velocityTask != null) {
+            velocityTask.cancel();
+            velocityTask = null;
+        }
+        if(fallTask != null) {
+            fallTask.cancel();
+            fallTask = null;
+        }
+        cancelLandingTask();
 
+        wallJumping = false;
+        lastFacing = null;
+        lastJumpLocation = null;
+        remainingJumps = getMaxJumps();
     }
 
     private void reset() {
@@ -160,22 +182,44 @@ public class WPlayer {
 
         lastFacing = null;
         lastJumpLocation = null;
-        remainingJumps = config.getInt("maxJumps");
-        if(remainingJumps == 0)
-            remainingJumps = -1;
-        if(stopWallJumpingTask != null)
-            stopWallJumpingTask.cancel();
-        stopWallJumpingTask = null;
+        remainingJumps = getMaxJumps();
+        cancelLandingTask();
         Bukkit.getPluginManager().callEvent(new WallJumpResetEvent(this));
+    }
+
+    private void cancelLandingTask() {
+        if(landingTask != null) {
+            landingTask.cancel();
+            landingTask = null;
+        }
+    }
+
+    private boolean hasLanded() {
+        return player.isOnGround() ||
+                LocationUtils.isOnGround(player) ||
+                player.isInWater() ||
+                player.isClimbing() ||
+                player.isFlying() ||
+                player.isGliding() ||
+                player.isInsideVehicle();
+    }
+
+    private int getMaxJumps() {
+        int maxJumps = config.getInt("maxJumps");
+        //0 means unlimited
+        return maxJumps <= 0 ? -1 : maxJumps;
     }
 
     public boolean canWallJump() {
         WallFace facing = LocationUtils.getPlayerFacing(player);
+        //the last jump location is meaningless once the player is in another world
+        if(lastJumpLocation != null && lastJumpLocation.getWorld() != player.getWorld())
+            lastJumpLocation = null;
         if(lastJumpLocation != null)
             //used so height doesn't matter when calculating distance between the players location and the last jump location
             lastJumpLocation.setY(player.getLocation().getY());
         if(
-                        !enabled ||
+                        !isEnabled() ||
                         onWall || //player is already stuck to an wall
                         remainingJumps == 0 || //player reached jump limit
                         (lastFacing != null && lastFacing.equals(facing)) || //player is facing the same direction as the last jump
@@ -207,6 +251,24 @@ public class WPlayer {
             return false;
 
         return true;
+    }
+
+    /**
+     * @return whether the player has wall jumping turned on (with /walljump on|off)
+     */
+    public boolean isEnabled() {
+        return player.getPersistentDataContainer().getOrDefault(enabledKey, PersistentDataType.BOOLEAN, true);
+    }
+
+    /**
+     * Turns wall jumping on or off for this player. The choice is stored in the player's data, so it is kept
+     * after they leave or the server restarts.
+     */
+    public void setEnabled(boolean enabled) {
+        if(enabled)
+            player.getPersistentDataContainer().remove(enabledKey);
+        else
+            player.getPersistentDataContainer().set(enabledKey, PersistentDataType.BOOLEAN, false);
     }
 
     public boolean isOnWall() {

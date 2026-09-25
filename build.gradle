@@ -1,6 +1,5 @@
 plugins {
     id 'java'
-    id 'com.gradleup.shadow' version '9.6.1'
 }
 
 group = 'me.arthed.walljump'
@@ -26,8 +25,6 @@ repositories {
 dependencies {
     compileOnly 'io.papermc.paper:paper-api:26.2.build.+'
     compileOnly 'com.sk89q.worldguard:worldguard-bukkit:7.0.16'
-
-    implementation 'org.bstats:bstats-bukkit:3.2.1'
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -42,17 +39,4 @@ processResources {
     filesMatching('plugin.yml') {
         expand props
     }
-}
-
-shadowJar {
-    archiveClassifier = ''
-    relocate 'org.bstats', 'me.arthed.walljump.libs.bstats'
-}
-
-tasks.named('jar') {
-    enabled = false
-}
-
-tasks.named('assemble') {
-    dependsOn shadowJar
 }

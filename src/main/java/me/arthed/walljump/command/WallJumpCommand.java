@@ -27,18 +27,22 @@ public class WallJumpCommand implements CommandExecutor, TabExecutor {
         if(cmd.getName().equalsIgnoreCase("walljump")) {
             if(args.length > 0) {
                 if(args[0].equalsIgnoreCase("reload")) {
+                    if(!sender.hasPermission("walljump.reload")) {
+                        sender.sendMessage(ChatColor.RED + "You don't have permission to do that!");
+                        return true;
+                    }
                     config.reload();
                     sender.sendMessage(ChatColor.translateAlternateColorCodes('&', "&e[WallJump] &7Config reloaded!"));
                     return true;
                 }
                 else if(sender instanceof Player && config.getBoolean("toggleCommand")) {
                     if(args[0].equalsIgnoreCase("on")) {
-                        WallJump.getInstance().getPlayerManager().getWPlayer((Player)sender).enabled = true;
+                        WallJump.getInstance().getPlayerManager().getWPlayer((Player)sender).setEnabled(true);
                         sender.sendMessage(ChatColor.translateAlternateColorCodes('&', config.getString("toggleCommandMessageOn")));
                         return true;
                     }
                     else if(args[0].equalsIgnoreCase("off")) {
-                        WallJump.getInstance().getPlayerManager().getWPlayer((Player)sender).enabled = false;
+                        WallJump.getInstance().getPlayerManager().getWPlayer((Player)sender).setEnabled(false);
                         sender.sendMessage(ChatColor.translateAlternateColorCodes('&', config.getString("toggleCommandMessageOff")));
                         return true;
                     }
@@ -48,12 +52,12 @@ public class WallJumpCommand implements CommandExecutor, TabExecutor {
             }
             else if (sender instanceof Player && config.getBoolean("toggleCommand")) {
                 WPlayer wPlayer = WallJump.getInstance().getPlayerManager().getWPlayer((Player)sender);
-                if(wPlayer.enabled) {
-                    wPlayer.enabled = false;
+                if(wPlayer.isEnabled()) {
+                    wPlayer.setEnabled(false);
                     sender.sendMessage(ChatColor.translateAlternateColorCodes('&', config.getString("toggleCommandMessageOff")));
                 }
                 else {
-                    wPlayer.enabled = true;
+                    wPlayer.setEnabled(true);
                     sender.sendMessage(ChatColor.translateAlternateColorCodes('&', config.getString("toggleCommandMessageOn")));
                 }
                 return true;

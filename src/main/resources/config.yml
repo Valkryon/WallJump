@@ -77,6 +77,3 @@ worldGuardFlagDefault: true
 toggleCommand: false
 toggleCommandMessageOn: '&e[WallJump] &7Wall jumping is now &aON'
 toggleCommandMessageOff: '&e[WallJump] &7Wall jumping is now &cOFF'
-
-
-ignoreUpdates: false

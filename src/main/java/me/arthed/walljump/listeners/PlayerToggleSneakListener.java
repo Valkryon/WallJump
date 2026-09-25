@@ -19,6 +19,8 @@ public class PlayerToggleSneakListener implements Listener {
         Player player = event.getPlayer();
         if(!player.isFlying()) {
             WPlayer wplayer = playerManager.getWPlayer(player);
+            if(wplayer == null) //e.g. NPCs from other plugins
+                return;
             if(wplayer.isOnWall() && !event.isSneaking())
                 wplayer.onWallJumpEnd();
             else if(LocationUtils.isTouchingAWall(player) && event.isSneaking() && !player.isOnGround())
