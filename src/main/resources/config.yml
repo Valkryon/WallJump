@@ -28,6 +28,28 @@ needPermission: false
 
 
 #####################
+##  Block settings ##
+#####################
+
+#Change how wall jumping works on specific blocks
+#Available settings: horizontalJumpPower, verticalJumpPower, timeOnWall, slidingSpeed
+#Any setting left out uses the value from the top of this file
+#Example for making ice slippery (remove ICE from blacklistedBlocks first):
+#  ICE:
+#    timeOnWall: 0.2
+#    slidingSpeed: 0.35
+blockSettings:
+  #Slime pushes the player further and higher
+  SLIME_BLOCK:
+    horizontalJumpPower: 0.40
+    verticalJumpPower: 0.80
+  #Honey keeps the player on the wall for longer, and they slide down slowly
+  HONEY_BLOCK:
+    timeOnWall: 2.0
+    slidingSpeed: 0.05
+
+
+#####################
 ##    Blacklists   ##
 #####################
 

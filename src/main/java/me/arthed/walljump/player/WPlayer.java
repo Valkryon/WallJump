@@ -13,7 +13,9 @@ import me.arthed.walljump.utils.LocationUtils;
 import me.arthed.walljump.utils.VelocityUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitTask;
@@ -29,6 +31,7 @@ public class WPlayer {
 
     private WallFace lastFacing;
     private Location lastJumpLocation;
+    private Material wallMaterial;
     private int remainingJumps = -1;
 
     private BukkitTask velocityTask;
@@ -63,6 +66,7 @@ public class WPlayer {
         wallJumping = true;
         lastFacing = LocationUtils.getPlayerFacing(player);
         lastJumpLocation = player.getLocation();
+        wallMaterial = LocationUtils.getBlockPlayerIsStuckOn(player, lastFacing).getType();
         if(remainingJumps > 0)
             remainingJumps--;
 
@@ -79,18 +83,21 @@ public class WPlayer {
             velocityTask.cancel();
         velocityTask = Bukkit.getScheduler().runTaskTimer(WallJump.getInstance(), () -> {
             player.setVelocity(new Vector(0, velocityY, 0));
-            if(velocityY != 0) {
-                if(sliding) {
-                    if (player.isOnGround() || !LocationUtils.getBlockPlayerIsStuckOn(player, lastFacing).getType().isSolid()) {
-                        player.setFallDistance(0);
-                        player.teleport(player.getLocation());
-                        onWallJumpEnd(false);
-                        return;
-                    }
-                    if (lastJumpLocation.getY() - player.getLocation().getY() >= 1.2) {
-                        lastJumpLocation = player.getLocation();
-                        EffectUtils.playWallJumpSound(player, lastFacing, 0.2f, 0.6f);
-                    }
+            Block wall = LocationUtils.getBlockPlayerIsStuckOn(player, lastFacing);
+            //the wall is gone (broken, or the player slid past it) or the player slid down to the ground
+            if (!wall.getType().isSolid() || (sliding && player.isOnGround())) {
+                player.setFallDistance(0);
+                player.teleport(player.getLocation());
+                onWallJumpEnd(false);
+                return;
+            }
+            wallMaterial = wall.getType();
+            if(sliding) {
+                //the player can slide onto a different block, which may have its own sliding speed
+                velocityY = (float) -config.getBlockDouble("slidingSpeed", wallMaterial);
+                if (lastJumpLocation.getY() - player.getLocation().getY() >= 1.2) {
+                    lastJumpLocation = player.getLocation();
+                    EffectUtils.playWallJumpSound(player, lastFacing, 0.2f, 0.6f);
                 }
             }
         }, 0, 1);
@@ -101,13 +108,13 @@ public class WPlayer {
         fallTask = Bukkit.getScheduler().runTaskLater(WallJump.getInstance(), () -> {
             if(onWall) {
                 if (config.getBoolean("slide")) {
-                    velocityY = (float) -config.getDouble("slidingSpeed");
+                    velocityY = (float) -config.getBlockDouble("slidingSpeed", wallMaterial);
                     sliding = true;
                 } else {
                     onWallJumpEnd();
                 }
             }
-        }, (long)(config.getDouble("timeOnWall")*20));
+        }, (long)(config.getBlockDouble("timeOnWall", wallMaterial)*20));
 
         //cancel the task for resetting wall jumping if the player wall jumps
         cancelLandingTask();
@@ -120,9 +127,9 @@ public class WPlayer {
     public void onWallJumpEnd(boolean jump) {
         AntiCheatUtils.restartPotentialAntiCheatChecks(player);
 
+        boolean wasSliding = sliding;
         onWall = false;
         sliding = false;
-
 
         //allow the player to move again
         player.setFallDistance(0);
@@ -132,11 +139,13 @@ public class WPlayer {
         }
 
         //call event
-        WallJumpEndEvent event = new WallJumpEndEvent(this, config.getDouble("horizontalJumpPower"), config.getDouble("verticalJumpPower"));
+        WallJumpEndEvent event = new WallJumpEndEvent(this,
+                config.getBlockDouble("horizontalJumpPower", wallMaterial),
+                config.getBlockDouble("verticalJumpPower", wallMaterial));
         Bukkit.getPluginManager().callEvent(event);
         //if the player is not sliding or can jump while sliding and is not looking down
         if(jump &&// !event.isCancelled() &&
-                ((velocityY == 0 && player.getLocation().getPitch() < 85) ||
+                ((!wasSliding && player.getLocation().getPitch() < 85) ||
                 (config.getBoolean("canJumpWhileSliding") && player.getLocation().getPitch() < 60)))
             //push the player in the direction that they are looking
             VelocityUtils.pushPlayerInFront(player,
