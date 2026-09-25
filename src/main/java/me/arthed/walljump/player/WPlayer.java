@@ -65,9 +65,8 @@ public class WPlayer {
         //Stop some anti cheat checks that might be caused by wall-jumping
         AntiCheatUtils.stopPotentialAntiCheatChecks(player);
 
-        //play sound and spawn particles
+        //play sound
         EffectUtils.playWallJumpSound(player, lastFacing, 0.3f, 1.2f);
-        EffectUtils.spawnSlidingParticles(player, 5, lastFacing);
 
         //stop the player from falling and moving while on the wall
         //or make them slide down
@@ -77,7 +76,6 @@ public class WPlayer {
         velocityTask = Bukkit.getScheduler().runTaskTimer(WallJump.getInstance(), () -> {
             player.setVelocity(new Vector(0, velocityY, 0));
             if(velocityY != 0) {
-                EffectUtils.spawnSlidingParticles(player, 2, lastFacing);
                 if(sliding) {
                     if (player.isOnGround() || !LocationUtils.getBlockPlayerIsStuckOn(player, lastFacing).getType().isSolid()) {
                         player.setFallDistance(0);
